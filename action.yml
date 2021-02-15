@@ -1,55 +1,55 @@
 name: 'Release Dotnet'
 
-inputs:
-  project:
-    description: 'path to the dotnet project to build. e.g. src/Buildstarted.csproj'
-    required: true
-  output:
-    description: 'name of the output file'
-    required: true
+env:
+  project: 'path to csproj' #required
+  output: 'release_file' #required
 
-runs:
-  using: "composite"
-  steps:
-    - uses: actions/checkout@v2
+on:
+  push:
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 5.0.x
+jobs:
+  build:
 
-    - name: Restore dependencies
-      run: dotnet restore ${{ inputs.project }}
+    runs-on: ubuntu-latest
 
-    - name: Build
-      run: dotnet publish ${{ inputs.project }} -c Release -r win-x64 -f net5.0 -o build
+    steps:
+      - uses: actions/checkout@v2
 
-    - name: Archive
-      run: |
-        cd build; zip -r ../${{ inputs.output }}.zip . *; cd ..
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
+      - name: Restore dependencies
+        run: dotnet restore $project
 
-    - name: Get the version
-      id: get_version
-      run: echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+      - name: Build
+        run: dotnet publish ${{ env.project }} -c Release -r win-x64 -f net5.0 -o build
 
-    - name: Upload Archive
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} 
-        asset_path: ${{ inputs.output }}.zip
-        asset_name: ${{ inputs.output }} ${{ steps.get_version.outputs.version }}.zip
-        asset_content_type: application/zip
+      - name: Archive
+        run: |
+          cd build; zip -r ../${{ env.output }}.zip . *; cd ..
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
 
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+
+      - name: Upload Archive
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} 
+          asset_path: ${{ env.output }}.zip
+          asset_name: ${{ env.output }} ${{ steps.get_version.outputs.version }}.zip
+          asset_content_type: application/zip
