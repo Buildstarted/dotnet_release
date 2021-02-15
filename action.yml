@@ -8,7 +8,8 @@ inputs:
     description: 'name of the output file'
     required: true
 
-runs:
+jobs:
+  runs:
     runs-on: ubuntu-latest
 
     steps:
