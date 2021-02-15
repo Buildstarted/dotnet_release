@@ -1,0 +1,56 @@
+name: 'Release Dotnet'
+
+inputs:
+  project:
+    description: 'path to the dotnet project to build. e.g. src/Buildstarted.csproj'
+    required: true
+  output:
+    description: 'name of the output file'
+    required: true
+
+runs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ inputs.project }}
+
+      - name: Build
+        run: dotnet publish ${{ inputs.project }} -c Release -r win-x64 -f net5.0 -o build
+
+      - name: Archive
+        run: |
+          cd build; zip -r ../${{ inputs.output }}.zip . *; cd ..
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+
+      - name: Upload Archive
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} 
+          asset_path: ${{ inputs.output }}.zip
+          asset_name: ${{ inputs.output }} ${{ steps.get_version.outputs.version }}.zip
+          asset_content_type: application/zip
+
